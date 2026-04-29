@@ -590,10 +590,12 @@ export default function Home() {
 
         <div className={`px-5 md:px-12 py-8 md:py-16 flex flex-col-reverse md:flex-row items-center justify-between border-b gap-6 md:gap-8 transition-colors ${isRedMode ? 'bg-[#A01818] border-red-900' : 'bg-gradient-to-b from-white to-gray-50/50 border-gray-100'}`}>
           <div className="flex-1 w-full flex flex-col items-center md:items-start text-center md:text-left">
-            <h2 className={`text-4xl md:text-7xl font-black uppercase italic tracking-tighter leading-tight md:leading-none mb-6 ${themeTextMain}`}>
-              The Good Sh*t.<br className="hidden md:block"/>
-              <span className={isRedMode ? "text-red-200" : "text-[#B71C1C]"}>Seriously.</span>
-            </h2>
+              <h2 className={`text-4xl md:text-7xl font-black uppercase italic tracking-tighter leading-tight md:leading-none mb-6 ${themeTextMain}`}>
+                The Good Sh*t.
+                {/* 🚀 NEW: Splits the line only on mobile screens */}
+                <br className="block md:hidden"/> 
+                <span className={isRedMode ? "text-red-200" : "text-[#B71C1C]"}>Seriously.</span>
+              </h2>
             <div className={`flex w-full rounded-2xl p-1.5 max-w-sm border shadow-inner ${isRedMode ? 'bg-red-900/50 border-red-800' : 'bg-gray-200/50 border-gray-200'}`}>
               {["Delivery", "Pick-up"].map((type) => (
                 <button key={type} onClick={() => setOrderType(type)} className={`flex-1 py-3 rounded-xl text-xs md:text-sm font-bold transition-all ${orderType === type ? (isRedMode ? 'bg-white text-[#B71C1C] shadow-md' : 'bg-white text-gray-900 shadow-sm border border-gray-200') : (isRedMode ? 'text-red-200 hover:text-white' : 'text-gray-500 hover:text-gray-900')}`}>
