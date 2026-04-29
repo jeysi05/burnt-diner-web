@@ -22,7 +22,7 @@ interface CartItem extends MenuItem { qty: number; }
 interface UserLocation { lat: number; lng: number; address: string; }
 
 const CATEGORIES = ["All", "Bundles", "Burgers", "Sides", "Drinks"];
-const ADMIN_PASSWORD = "burnt";
+const ADMIN_PASSWORD = process.env.NEXT_PUBLIC_ADMIN_PASSWORD;
 const TODAY = new Date().getDay();
 const IS_SATURDAY = TODAY === 6;
 
