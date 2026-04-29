@@ -1,8 +1,10 @@
 "use client";
 import React, { useEffect, useState } from "react";
-import { collection, query, orderBy, onSnapshot, doc, updateDoc } from "firebase/firestore";
+// 🚀 ADDED: deleteDoc
+import { collection, query, orderBy, onSnapshot, doc, updateDoc, deleteDoc } from "firebase/firestore";
 import { db } from "../../firebase"; 
-import { CheckCircle, XCircle, Clock, MapPin, ChefHat, Bike, TrendingUp, ShoppingBag } from "lucide-react";
+// 🚀 ADDED: Trash2 icon
+import { CheckCircle, XCircle, Clock, MapPin, ChefHat, Bike, TrendingUp, ShoppingBag, Trash2 } from "lucide-react";
 import Link from "next/link";
 
 export default function AdminDashboard() {
@@ -21,7 +23,19 @@ export default function AdminDashboard() {
     await updateDoc(doc(db, "orders", orderId), { status: newStatus });
   };
 
-  // 🚀 CALCULATE LIVE REVENUE (Ignore cancelled orders)
+  // 🚀 ADDED: Delete function with safety confirmation
+  const deleteOrder = async (orderId: string) => {
+    if (window.confirm("Are you sure you want to permanently delete this order record?")) {
+      try {
+        await deleteDoc(doc(db, "orders", orderId));
+      } catch (error) {
+        console.error("Delete failed:", error);
+        alert("Error deleting order.");
+      }
+    }
+  };
+
+  // CALCULATE LIVE REVENUE (Ignore cancelled orders)
   const totalRevenue = orders
     .filter(o => o.status !== 'cancelled')
     .reduce((sum, order) => sum + (parseFloat(order.total) || 0), 0);
@@ -129,9 +143,20 @@ export default function AdminDashboard() {
                   <Bike size={20} /> Dispatch Lalamove
                 </button>
               )}
+              
+              {/* 🚀 ADDED: Delete button only for Delivered or Cancelled orders */}
               {(order.status === 'delivering' || order.status === 'cancelled') && (
-                <div className="w-full py-4 text-center text-gray-500 font-bold uppercase tracking-widest text-xs">
-                  Order Closed
+                <div className="flex w-full gap-3">
+                  <div className="flex-1 py-4 text-center text-gray-500 font-bold uppercase tracking-widest text-xs flex items-center justify-center">
+                    Order Closed
+                  </div>
+                  <button 
+                    onClick={() => deleteOrder(order.id)} 
+                    className="p-4 bg-white/5 hover:bg-red-600 hover:text-white text-gray-500 rounded-xl transition-all"
+                    title="Delete Record"
+                  >
+                    <Trash2 size={20} />
+                  </button>
                 </div>
               )}
             </div>
