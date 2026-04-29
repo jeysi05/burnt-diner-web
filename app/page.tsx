@@ -17,12 +17,13 @@ const MapContainer = dynamic(() => import('react-leaflet').then(m => m.MapContai
 const TileLayer = dynamic(() => import('react-leaflet').then(m => m.TileLayer), { ssr: false });
 
 // ─── Types & Constants ───────────────────────────────────────────────────────
-interface MenuItem { id: string; name: string; price: number; category: string; image_url?: string; description?: string; }
+// 🚀 NEW: Added inStock to the MenuItem interface
+interface MenuItem { id: string; name: string; price: number; category: string; image_url?: string; description?: string; inStock?: boolean; }
 interface CartItem extends MenuItem { qty: number; }
 interface UserLocation { lat: number; lng: number; address: string; }
 
 const CATEGORIES = ["All", "Bundles", "Burgers", "Sides", "Drinks"];
-const ADMIN_PASSWORD = process.env.NEXT_PUBLIC_ADMIN_PASSWORD;
+const ADMIN_PASSWORD = process.env.NEXT_PUBLIC_ADMIN_PASSWORD || "burnt";
 const TODAY = new Date().getDay();
 const IS_SATURDAY = TODAY === 6;
 
@@ -37,7 +38,7 @@ export default function Home() {
   // Theme & Order State
   const [isRedMode, setIsRedMode] = useState(false);
   const [lastOrderId, setLastOrderId] = useState<string | null>(null);
-  const [justOrdered, setJustOrdered] = useState(false); // 🚀 NEW: Tracks if they just finished checking out
+  const [justOrdered, setJustOrdered] = useState(false);
 
   // App States
   const [activeBranchId, setActiveBranchId] = useState<"malate" | "salcedo">("malate");
@@ -186,7 +187,6 @@ export default function Home() {
       localStorage.setItem("burnt_diner_last_order", docRef.id);
       setLastOrderId(docRef.id);
       
-      // 🚀 MAGIC HAPPENS HERE: Empty cart, hide modal, show success UI instead of redirecting
       setCart([]);
       setShowCheckoutModal(false);
       setIsSubmitting(false);
@@ -299,7 +299,7 @@ export default function Home() {
   };
 
   const addToCart = (item: MenuItem) => { 
-    setJustOrdered(false); // If they start adding again, clear the success screen
+    setJustOrdered(false); 
     setCart(prev => { const ex = prev.find(c => c.id === item.id); return ex ? prev.map(c => c.id === item.id ? { ...c, qty: c.qty + 1 } : c) : [...prev, { ...item, qty: 1 }]; }); 
   };
   const removeFromCart = (item: MenuItem) => { setCart(prev => { const ex = prev.find(c => c.id === item.id); if (!ex) return prev; return ex.qty === 1 ? prev.filter(c => c.id !== item.id) : prev.map(c => c.id === item.id ? { ...c, qty: c.qty - 1 } : c); }); };
@@ -625,24 +625,44 @@ export default function Home() {
           </div>
 
           <div className="grid grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-4 md:gap-8">
-            {filtered.map((item) => (
-              <div key={item.id} className={`rounded-3xl border overflow-hidden hover:shadow-2xl transition-all flex flex-col group cursor-pointer shadow-sm ${themeCardBg} ${themeBorder}`}>
-                <div className="w-full aspect-square md:aspect-video overflow-hidden bg-gray-100">
-                  <img src={item.image_url || "https://images.unsplash.com/photo-1568901346375-23c9450c58cd"} alt={item.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" />
-                </div>
-                <div className="p-4 md:p-6 flex-1 flex flex-col justify-between">
-                  <div>
-                    <h3 className={`font-black text-sm md:text-base uppercase italic leading-tight line-clamp-1 ${themeTextMain}`}>{item.name}</h3>
-                    <p className={`text-[9px] md:text-[10px] mt-1 uppercase tracking-widest font-bold ${themeTextMuted}`}>{item.category}</p>
-                    <p className={`hidden md:block text-sm mt-2 line-clamp-2 leading-snug ${themeTextMuted}`}>{item.description}</p>
+            {filtered.map((item) => {
+              // 🚀 NEW: Check if the item is out of stock
+              const isOutOfStock = item.inStock === false;
+
+              return (
+                <div key={item.id} className={`rounded-3xl border overflow-hidden transition-all flex flex-col group shadow-sm ${isOutOfStock ? 'opacity-50 grayscale' : 'hover:shadow-2xl cursor-pointer'} ${themeCardBg} ${themeBorder}`}>
+                  <div className="w-full aspect-square md:aspect-video overflow-hidden bg-gray-100">
+                    <img src={item.image_url || "https://images.unsplash.com/photo-1568901346375-23c9450c58cd"} alt={item.name} className={`w-full h-full object-cover transition-transform duration-700 ${!isOutOfStock && 'group-hover:scale-105'}`} />
                   </div>
-                  <div className="flex items-center justify-between mt-4 md:mt-6">
-                    <span className={`font-black text-lg md:text-2xl ${isRedMode ? 'text-white' : 'text-[#B71C1C]'}`}>₱{item.price}</span>
-                    <button onClick={() => addToCart(item)} className={`w-10 h-10 md:w-12 md:h-12 rounded-full flex items-center justify-center transition-all shadow-sm ${isRedMode ? 'bg-white text-[#B71C1C] hover:bg-red-100' : 'bg-gray-100 text-gray-900 hover:bg-[#B71C1C] hover:text-white'}`}><Plus size={20} /></button>
+                  <div className="p-4 md:p-6 flex-1 flex flex-col justify-between">
+                    <div>
+                      <h3 className={`font-black text-sm md:text-base uppercase italic leading-tight line-clamp-1 ${themeTextMain}`}>{item.name}</h3>
+                      <p className={`text-[9px] md:text-[10px] mt-1 uppercase tracking-widest font-bold ${themeTextMuted}`}>{item.category}</p>
+                      <p className={`hidden md:block text-sm mt-2 line-clamp-2 leading-snug ${themeTextMuted}`}>{item.description}</p>
+                    </div>
+                    <div className="flex items-center justify-between mt-4 md:mt-6">
+                      
+                      {/* 🚀 NEW: Change Price text if sold out */}
+                      {isOutOfStock ? (
+                        <span className="font-black text-lg md:text-xl text-gray-500 uppercase tracking-widest">Sold Out</span>
+                      ) : (
+                        <span className={`font-black text-lg md:text-2xl ${isRedMode ? 'text-white' : 'text-[#B71C1C]'}`}>₱{item.price}</span>
+                      )}
+
+                      {/* 🚀 NEW: Disable Add button if sold out */}
+                      <button 
+                        onClick={() => !isOutOfStock && addToCart(item)} 
+                        disabled={isOutOfStock}
+                        className={`w-10 h-10 md:w-12 md:h-12 rounded-full flex items-center justify-center transition-all shadow-sm ${isOutOfStock ? 'bg-gray-300 text-gray-500 cursor-not-allowed' : isRedMode ? 'bg-white text-[#B71C1C] hover:bg-red-100' : 'bg-gray-100 text-gray-900 hover:bg-[#B71C1C] hover:text-white'}`}
+                      >
+                        <Plus size={20} />
+                      </button>
+
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       </div>
@@ -654,7 +674,6 @@ export default function Home() {
         </div>
 
         <div className="flex-1 overflow-y-auto p-6 space-y-4 custom-scrollbar">
-          {/* 🚀 NEW PERSISTENT SUCCESS UI FOR CART */}
           {justOrdered && lastOrderId ? (
             <div className="flex flex-col items-center justify-center h-full text-center space-y-6 animate-in fade-in zoom-in-95 duration-500">
               <div className="w-24 h-24 bg-green-500/10 rounded-full flex items-center justify-center mb-2">
@@ -681,7 +700,7 @@ export default function Home() {
           ) : (
             cart.map((item: any) => (
               <div key={item.id} className={`p-5 rounded-3xl border shadow-sm flex items-center gap-4 transition-all ${themeCardBg} ${themeBorder} ${isRedMode ? 'hover:border-red-400' : 'hover:border-[#B71C1C]/20'}`}>
-                <img src={item.image_url} alt={item.name} className="w-16 h-16 rounded-2xl object-cover bg-gray-100 shrink-0" />
+                <img src={item.image_url || "https://images.unsplash.com/photo-1568901346375-23c9450c58cd"} alt={item.name} className="w-16 h-16 rounded-2xl object-cover bg-gray-100 shrink-0" />
                 <div className="flex-1 min-w-0">
                   <p className={`font-black text-sm uppercase italic truncate ${themeTextMain}`}>{item.name}</p>
                   <p className={`font-bold text-xs mt-1 ${themeTextMuted}`}>₱{item.price}</p>
@@ -762,7 +781,6 @@ export default function Home() {
             </div>
             
             <div className="flex-1 overflow-y-auto p-5 custom-scrollbar space-y-4">
-               {/* 🚀 NEW PERSISTENT SUCCESS UI FOR MOBILE CART */}
                {justOrdered && lastOrderId ? (
                  <div className="flex flex-col items-center justify-center h-full text-center space-y-6 pt-10">
                    <div className="w-20 h-20 bg-green-500/10 rounded-full flex items-center justify-center mb-2">
@@ -786,7 +804,7 @@ export default function Home() {
                ) : (
                  cart.map((item: any) => (
                     <div key={item.id} className="flex items-center gap-3 bg-white p-3 rounded-2xl border border-gray-100 shadow-sm">
-                      <img src={item.image_url} alt={item.name} className="w-16 h-16 rounded-xl object-cover bg-gray-50" />
+                      <img src={item.image_url || "https://images.unsplash.com/photo-1568901346375-23c9450c58cd"} alt={item.name} className="w-16 h-16 rounded-xl object-cover bg-gray-50 shrink-0" />
                       <div className="flex-1 min-w-0">
                         <p className="font-bold text-gray-900 text-sm uppercase italic truncate">{item.name}</p>
                         <p className="text-gray-500 text-xs font-bold mt-0.5">₱{(item.price * item.qty).toFixed(2)}</p>
